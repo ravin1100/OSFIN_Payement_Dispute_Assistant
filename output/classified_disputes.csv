@@ -1,0 +1,21 @@
+dispute_id,txn_id,amount,merchant,channel,predicted_category,confidence,explanation
+D001,T001,999,UPI@StoreA,Mobile,DUPLICATE_CHARGE,1.0,Keyword match: 'charged twice' + Found 1 duplicate transaction(s)
+D002,T002,1250,NEFT@BankX,Web,FAILED_TRANSACTION,1.0,Keyword match: 'failed' + Transaction status: FAILED
+D003,T003,500,CARD@ShopB,POS,FAILED_TRANSACTION,1.0,Keyword match: 'failed' + Transaction status: FAILED
+D004,T004,1200,CARD@AppC,Mobile,FRAUD,1.0,Keyword match: 'fraud'
+D005,T005,750,CARD@SiteD,Web,REFUND_PENDING,1.0,Keyword match: 'waiting for refund' + Transaction status: CANCELLED
+D006,T006,1499,CARD@AppE,Mobile,DUPLICATE_CHARGE,1.0,Keyword match: 'duplicate charge' + Found 1 duplicate transaction(s)
+D007,T007,299,UPI@UserVPA1,Mobile,FAILED_TRANSACTION,1.0,Keyword match: 'failed' + Transaction status: FAILED
+D008,T008,5400,NEFT@BankY,Web,OTHERS,0.5,"No strong keyword match (Merchant: NEFT@BankY, Channel: Web)"
+D009,T009,1899,CARD@SiteF,Web,FRAUD,1.0,Keyword match: 'don't recognize'
+D010,T010,650,CARD@POS_Terminal_12,POS,FAILED_TRANSACTION,1.0,Keyword match: 'failed' + Transaction status: FAILED
+D011,T011,220,UPI@CafeQ,QR,DUPLICATE_CHARGE,1.0,Keyword match: 'two upi debit' + Found 1 duplicate transaction(s)
+D012,T012,430,UPI@UserVPA2,Mobile,FAILED_TRANSACTION,0.9,Keyword match: 'payment stuck'
+D013,T013,2100,CARD@EMIProvider,Web,DUPLICATE_CHARGE,1.0,Keyword match: 'charged twice' + Found 1 duplicate transaction(s)
+D014,T014,9800,NEFT@BankZ,Web,FAILED_TRANSACTION,0.9,Keyword match: 'not received'
+D015,T015,399,CARD@GatewayG,Web,FAILED_TRANSACTION,1.0,Keyword match: 'failed' + Transaction status: FAILED
+D016,T016,5200,CARD@WalletH,Mobile,FRAUD,1.0,Keyword match: 'didn't authorize' + High amount: ₹5200
+D017,T017,875,UPI@StoreI,Mobile,FAILED_TRANSACTION,0.9,Keyword match: 'not received'
+D018,T018,1299,UPI@StoreJ,Mobile,DUPLICATE_CHARGE,1.0,Keyword match: 'duplicate upi' + Found 1 duplicate transaction(s)
+D019,T019,25000,NEFT@BankX,Web,FAILED_TRANSACTION,1.0,Keyword match: 'failed' + Transaction status: FAILED
+D020,T020,1800,CARD@FuelPumpK,POS,DUPLICATE_CHARGE,1.0,Keyword match: 'charged twice' + Found 1 duplicate transaction(s)

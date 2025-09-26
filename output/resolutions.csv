@@ -1,0 +1,21 @@
+dispute_id,suggested_action,justification
+D001,Auto-refund,Duplicate transaction confirmed in system.
+D002,Auto-refund,Transaction failed in records; refund applicable.
+D003,Auto-refund,Transaction failed in records; refund applicable.
+D004,Mark as potential fraud,Medium-value suspicious activity detected.
+D005,Auto-refund,Transaction cancelled/failed; refund overdue.
+D006,Auto-refund,Duplicate transaction confirmed in system.
+D007,Auto-refund,Transaction failed in records; refund applicable.
+D008,Ask for more info,"Dispute unclear, requires customer clarification."
+D009,Mark as potential fraud,Medium-value suspicious activity detected.
+D010,Auto-refund,Transaction failed in records; refund applicable.
+D011,Auto-refund,Duplicate transaction confirmed in system.
+D012,Manual review,Transaction pending; needs manual verification.
+D013,Auto-refund,Duplicate transaction confirmed in system.
+D014,Ask for more info,Transaction successful in records; needs clarification.
+D015,Auto-refund,Transaction failed in records; refund applicable.
+D016,Escalate to bank,High-value fraud dispute requires bank escalation.
+D017,Ask for more info,Transaction successful in records; needs clarification.
+D018,Auto-refund,Duplicate transaction confirmed in system.
+D019,Auto-refund,Transaction failed in records; refund applicable.
+D020,Auto-refund,Duplicate transaction confirmed in system.
