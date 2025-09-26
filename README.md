@@ -11,6 +11,24 @@ This project implements a comprehensive dispute management system that:
 3. **Provides natural language query interface** for support agents using Gemini 2.0 Flash
 4. **Offers interactive web interface** built with Streamlit
 
+## 📸 Screenshots
+
+### Upload Page
+
+![Upload Page](assets/first.png)
+
+### Classify Page
+
+![Classify Page](assets/second.png)
+
+### Result Page
+
+![Classify Page](assets/third.png)
+
+### Query Page
+
+![Classify Page](assets/fourth.png)
+
 ## ✨ Features
 
 ### Core Features
