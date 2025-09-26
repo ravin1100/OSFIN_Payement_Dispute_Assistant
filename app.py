@@ -1,13 +1,3 @@
-"""
-Streamlit Web Interface for OSFIN Dispute Classification System
-==============================================================
-
-A simple, user-friendly interface for uploading dispute data,
-classifying disputes, viewing results, and querying the data.
-
-Run with: streamlit run app.py
-"""
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -19,6 +9,7 @@ import sys
 # Add src to path for imports
 sys.path.append("src")
 from classify import classify_disputes, classify_dispute
+from llm_query_processor import process_natural_language_query, get_llm_processor
 
 # Page config
 st.set_page_config(
@@ -37,6 +28,10 @@ if "classified_data" not in st.session_state:
     st.session_state.classified_data = None
 if "query_history" not in st.session_state:
     st.session_state.query_history = []
+if "query_processor" not in st.session_state:
+    st.session_state.query_processor = None
+if "gemini_api_key" not in st.session_state:
+    st.session_state.gemini_api_key = None
 
 
 def main():
@@ -338,14 +333,14 @@ def results_tab():
             names=category_counts.index,
             title="Distribution of Dispute Categories",
         )
-        st.plotly_chart(fig_pie, width="stretch")
+        st.plotly_chart(fig_pie, use_container_width=True)
 
     with col2:
         st.subheader("📈 Confidence Scores")
         fig_hist = px.histogram(
             df, x="confidence", nbins=20, title="Distribution of Confidence Scores"
         )
-        st.plotly_chart(fig_hist, width="stretch")
+        st.plotly_chart(fig_hist, use_container_width=True)
 
     st.markdown("---")
 
@@ -419,9 +414,95 @@ def results_tab():
             )
 
 
+def process_real_llm_query(query: str, df: pd.DataFrame, processor):
+    """Process query using real LLM and display results"""
+
+    # Add to history
+    if query not in st.session_state.query_history:
+        st.session_state.query_history.append(query)
+
+    # Display query
+    st.markdown(f"**💬 Your Query:** {query}")
+
+    with st.spinner("🤖 AI is analyzing your query..."):
+        try:
+            # Use real LLM processing
+            result, explanation, code_used = process_natural_language_query(
+                query, df, st.session_state.gemini_api_key
+            )
+
+            # Display AI response
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.success(f"🤖 **AI Response:** {explanation}")
+            with col2:
+                if processor.client:
+                    st.info("🟢 Gemini 2.0 Flash")
+                else:
+                    st.warning("🟡 Fallback Mode")
+
+            # Show generated code
+            with st.expander("🔍 Generated Code"):
+                st.code(code_used, language="python")
+
+            # Display results
+            if isinstance(result, pd.DataFrame):
+                if len(result) == 0:
+                    st.warning("🔍 No results found for your query")
+                else:
+                    st.success(f"📊 Found {len(result)} results:")
+
+                    # Show results with appropriate columns
+                    display_columns = [
+                        "dispute_id",
+                        "predicted_category",
+                        "confidence",
+                        "amount",
+                    ]
+
+                    if (
+                        "merchant" in result.columns
+                        and result["merchant"].notna().any()
+                    ):
+                        display_columns.append("merchant")
+                    if "channel" in result.columns and result["channel"].notna().any():
+                        display_columns.append("channel")
+
+                    display_columns.append("explanation")
+                    available_columns = [
+                        col for col in display_columns if col in result.columns
+                    ]
+
+                    st.dataframe(result[available_columns], width="stretch")
+
+                    # Download results
+                    csv_buffer = BytesIO()
+                    result.to_csv(csv_buffer, index=False)
+                    csv_buffer.seek(0)
+
+                    st.download_button(
+                        label="📥 Download Query Results",
+                        data=csv_buffer,
+                        file_name=f"query_results_{len(result)}_disputes.csv",
+                        mime="text/csv",
+                    )
+
+            elif isinstance(result, pd.Series):
+                st.success("📈 Analysis Results:")
+                st.dataframe(result.to_frame(), width="stretch")
+
+            else:
+                st.success("📊 Result:")
+                st.write(result)
+
+        except Exception as e:
+            st.error(f"❌ Error processing query: {str(e)}")
+            st.info("💡 Try simpler queries or check your API key configuration")
+
+
 def query_tab():
-    """Tab 4: Query Interface"""
-    st.header("💬 Query Your Data")
+    """Tab 4: Real LLM-Powered Query Interface"""
+    st.header("🤖 AI-Powered Natural Language Query (Gemini 2.0 Flash)")
 
     if st.session_state.classified_data is None:
         st.warning("⚠️ No data available for querying. Please classify disputes first.")
@@ -429,166 +510,117 @@ def query_tab():
 
     df = st.session_state.classified_data
 
+    # API Key Configuration
+    st.sidebar.markdown("### 🔑 Gemini API Configuration")
+    api_key_input = st.sidebar.text_input(
+        "Enter Gemini API Key:",
+        type="password",
+        help="Get your free API key from: https://makersuite.google.com/app/apikey",
+    )
+
+    if api_key_input:
+        st.session_state.gemini_api_key = api_key_input
+        if st.session_state.query_processor is None:
+            st.session_state.query_processor = get_llm_processor(api_key_input)
+
+    # Initialize processor (with or without API key)
+    if st.session_state.query_processor is None:
+        st.session_state.query_processor = get_llm_processor(
+            st.session_state.gemini_api_key
+        )
+
+    processor = st.session_state.query_processor
+
+    # Show AI status
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        if processor.client:
+            st.success(
+                "🤖 **Gemini 2.0 Flash Active**: Real AI-powered queries enabled!"
+            )
+        else:
+            st.warning(
+                "⚠️ **Fallback Mode**: Please add API key for full AI capabilities"
+            )
+    with col2:
+        ai_status = "🟢 Gemini Active" if processor.client else "🔴 Fallback"
+        st.metric("AI Status", ai_status)
+    with col3:
+        st.metric("Data Rows", len(df))
+
+    st.markdown("---")
     # Quick action buttons
-    st.subheader("🚀 Quick Queries")
+    st.subheader("🚀 Quick AI Queries")
+
     col1, col2, col3, col4 = st.columns(4)
 
-    with col1:
-        if st.button("Show Fraud Cases", width="stretch"):
-            process_query("Show all fraud disputes", df)
+    # Define concise button labels and their corresponding queries
+    quick_actions = [
+        ("🔍 Fraud Cases", "Show all fraud disputes"),
+        ("💰 High Amount", "Find high amount disputes"),
+        ("⚠️ Low Confidence", "Show low confidence cases"),
+        ("📊 Category Count", "Count disputes by category"),
+    ]
 
-    with col2:
-        if st.button("High Amount Disputes", width="stretch"):
-            process_query("Show disputes with amount > 1000", df)
-
-    with col3:
-        if st.button("Low Confidence", width="stretch"):
-            process_query("Show disputes with confidence < 0.7", df)
-
-    with col4:
-        if st.button("Duplicate Charges", width="stretch"):
-            process_query("Show all duplicate charge disputes", df)
+    for i, (col, (button_label, query)) in enumerate(
+        zip([col1, col2, col3, col4], quick_actions)
+    ):
+        with col:
+            if st.button(
+                button_label,
+                use_container_width=True,
+                key=f"quick_{i}",
+            ):
+                process_real_llm_query(query, df, processor)
 
     st.markdown("---")
 
-    # Custom query input
-    st.subheader("✍️ Custom Query")
+    # Natural language query input
+    st.subheader("🧠 Ask Anything in Natural Language")
 
     # Query examples
-    with st.expander("💡 Query Examples"):
+    with st.expander("💡 Try These Natural Language Queries"):
         st.markdown(
             """
-        **Try these example queries:**
-        - Show me all fraud disputes
-        - How many duplicate charges are there?
-        - Find disputes with amount greater than 2000
-        - Show REFUND_PENDING cases
-        - List disputes with low confidence
-        - Show me the highest amount dispute
+        **Complex queries the AI can understand:**
+        - "Show me all fraud disputes with amount greater than 5000"
+        - "Which merchant has the highest number of disputes?"
+        - "Find duplicate charges that happened on mobile channel"
+        - "What's the average confidence score for each category?"
+        - "Show failed transactions with amounts between 1000 and 3000"
+        - "List all UPI fraud cases with high confidence"
+        - "Count disputes by merchant and sort by amount"
+        - "Find all disputes with confidence less than 0.8"
         """
         )
 
     # Query input
-    query = st.text_input(
-        "Enter your query:",
-        placeholder="e.g., Show me all fraud disputes with amount > 1000",
+    query = st.text_area(
+        "💬 Ask your question in natural language:",
+        placeholder="e.g., Show me all fraud disputes with high amounts and list them by merchant",
+        height=80,
     )
 
-    if st.button("🔍 Execute Query", type="primary"):
-        if query.strip():
-            process_query(query, df)
-        else:
-            st.warning("⚠️ Please enter a query")
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        if st.button("🤖 Ask AI (Gemini 2.0 Flash)", type="primary", width="stretch"):
+            if query.strip():
+                process_real_llm_query(query, df, processor)
+            else:
+                st.warning("⚠️ Please enter a question")
+
+    with col2:
+        if st.button("🔄 Clear", width="stretch"):
+            st.rerun()
 
     # Query history
     if st.session_state.query_history:
         st.markdown("---")
-        st.subheader("📜 Recent Queries")
+        st.subheader("📜 Recent AI Queries")
 
-        for i, hist_query in enumerate(reversed(st.session_state.query_history[-5:])):
+        for i, hist_query in enumerate(reversed(st.session_state.query_history[-3:])):
             if st.button(f"🔄 {hist_query}", key=f"hist_{i}"):
-                process_query(hist_query, df)
-
-
-def process_query(query: str, df: pd.DataFrame):
-    """Process natural language query and show results"""
-
-    # Add to history
-    if query not in st.session_state.query_history:
-        st.session_state.query_history.append(query)
-
-    # Display query
-    st.markdown(f"**💬 Query:** {query}")
-
-    try:
-        # Simple query processing
-        query_lower = query.lower()
-        filtered_df = df.copy()
-
-        # Category filters
-        if "fraud" in query_lower:
-            filtered_df = filtered_df[filtered_df["predicted_category"] == "FRAUD"]
-        elif "duplicate" in query_lower:
-            filtered_df = filtered_df[
-                filtered_df["predicted_category"] == "DUPLICATE_CHARGE"
-            ]
-        elif "failed" in query_lower:
-            filtered_df = filtered_df[
-                filtered_df["predicted_category"] == "FAILED_TRANSACTION"
-            ]
-        elif "refund" in query_lower:
-            filtered_df = filtered_df[
-                filtered_df["predicted_category"] == "REFUND_PENDING"
-            ]
-
-        # Amount filters
-        if "amount >" in query_lower or "amount greater than" in query_lower:
-            import re
-
-            numbers = re.findall(r"\d+", query)
-            if numbers:
-                threshold = int(numbers[0])
-                filtered_df = filtered_df[filtered_df["amount"] > threshold]
-
-        # Confidence filters
-        if "low confidence" in query_lower or "confidence <" in query_lower:
-            filtered_df = filtered_df[filtered_df["confidence"] < 0.7]
-        elif "high confidence" in query_lower:
-            filtered_df = filtered_df[filtered_df["confidence"] >= 0.8]
-
-        # Show results
-        if len(filtered_df) == 0:
-            st.warning("🔍 No results found for your query")
-        else:
-            st.success(f"📊 Found {len(filtered_df)} results:")
-
-            # Summary if it's a count query
-            if "how many" in query_lower or "count" in query_lower:
-                st.metric("Count", len(filtered_df))
-
-            # Show results table
-            display_columns = [
-                "dispute_id",
-                "predicted_category",
-                "confidence",
-                "amount",
-            ]
-
-            # Add merchant and channel if available
-            if (
-                "merchant" in filtered_df.columns
-                and filtered_df["merchant"].notna().any()
-            ):
-                display_columns.append("merchant")
-            if (
-                "channel" in filtered_df.columns
-                and filtered_df["channel"].notna().any()
-            ):
-                display_columns.append("channel")
-
-            display_columns.append("explanation")
-
-            st.dataframe(
-                filtered_df[display_columns],
-                width="stretch",
-            )
-
-            # Download filtered results
-            if len(filtered_df) > 0:
-                csv_buffer = BytesIO()
-                filtered_df.to_csv(csv_buffer, index=False)
-                csv_buffer.seek(0)
-
-                st.download_button(
-                    label="📥 Export Query Results",
-                    data=csv_buffer,
-                    file_name=f"query_results_{len(filtered_df)}_disputes.csv",
-                    mime="text/csv",
-                )
-
-    except Exception as e:
-        st.error(f"❌ Error processing query: {str(e)}")
-        st.info("💡 Try simpler queries like 'show fraud disputes' or 'amount > 1000'")
+                process_real_llm_query(hist_query, df, processor)
 
 
 if __name__ == "__main__":

@@ -32,7 +32,20 @@ def main():
     # -------------------------------
     print("🔹 Step 1: Classifying disputes...")
     disputes_df = load_disputes("data/disputes.csv")
-    classified_df = classify_disputes(disputes_df)
+
+    # Load transactions for enhanced classification
+    try:
+        from classify import load_transactions
+
+        transactions_df = load_transactions("data/transactions.csv")
+        print(
+            f"✅ Loaded {len(transactions_df)} transactions for enhanced classification"
+        )
+    except FileNotFoundError:
+        transactions_df = None
+        print("⚠️ transactions.csv not found. Using basic classification.")
+
+    classified_df = classify_disputes(disputes_df, transactions_df)
     save_classified(classified_df, "output/classified_disputes.csv")
 
     # -------------------------------
