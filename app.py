@@ -74,7 +74,7 @@ def upload_tab():
         )
 
     with col2:
-        st.subheader("💳 Transactions File (Optional)")
+        st.subheader("💳 Transactions File")
         # Transactions file uploader
         uploaded_transactions = st.file_uploader(
             "Choose transactions CSV file",
@@ -509,6 +509,28 @@ def query_tab():
         return
 
     df = st.session_state.classified_data
+
+    # ======================
+
+    # Add this debug section after line where df is defined
+    if st.checkbox("🔍 Debug Data Categories"):
+        st.subheader("Debug Information")
+        unique_categories = df["predicted_category"].unique()
+        st.write("**Unique categories in data:**", unique_categories)
+
+        # Check for exact fraud matches
+        fraud_count = len(df[df["predicted_category"] == "FRAUD"])
+        st.write(f"**Exact 'FRAUD' matches:** {fraud_count}")
+
+        # Check for case-insensitive matches
+        fraud_count_lower = len(df[df["predicted_category"].str.upper() == "FRAUD"])
+        st.write(f"**Case-insensitive 'FRAUD' matches:** {fraud_count_lower}")
+
+        # Show first few category values
+        st.write("**First 10 category values:**")
+        st.write(df["predicted_category"].head(10).tolist())
+
+    # ======================
 
     # API Key Configuration
     st.sidebar.markdown("### 🔑 Gemini API Configuration")
